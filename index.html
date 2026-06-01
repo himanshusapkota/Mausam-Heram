@@ -1,0 +1,334 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mausam Heram</title>
+
+<style>
+:root{
+    --bg-dark:#0D1B2A;
+    --bg-card:#1B2A3B;
+    --bg-input:#243447;
+    --accent:#00C2CB;
+    --accent-hover:#00E5F0;
+    --text-primary:#E8F4FD;
+    --text-muted:#7A9BB5;
+    --text-warn:#FF6B6B;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Helvetica,Arial,sans-serif;
+}
+
+body{
+    background:var(--bg-dark);
+    color:var(--text-primary);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:20px;
+}
+
+.container{
+    width:100%;
+    max-width:480px;
+}
+
+.header{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.logo{
+    color:var(--accent);
+    font-size:2rem;
+    font-weight:bold;
+}
+
+.clock{
+    color:var(--text-muted);
+    margin-top:5px;
+    font-size:0.9rem;
+}
+
+.search-box{
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+.search-box input{
+    flex:1;
+    background:var(--bg-input);
+    border:none;
+    outline:none;
+    color:var(--text-primary);
+    padding:14px;
+    border-radius:10px;
+    font-size:16px;
+}
+
+.search-box button{
+    background:var(--accent);
+    border:none;
+    border-radius:10px;
+    padding:14px 20px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.search-box button:hover{
+    background:var(--accent-hover);
+}
+
+.card{
+    background:var(--bg-card);
+    border-radius:18px;
+    text-align:center;
+    padding:25px;
+}
+
+.weather-icon{
+    width:100px;
+    height:100px;
+}
+
+.temp{
+    font-size:72px;
+    font-weight:bold;
+}
+
+.city{
+    color:var(--accent);
+    font-size:1.3rem;
+    font-weight:bold;
+}
+
+.condition{
+    color:var(--text-muted);
+    margin-top:5px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:20px;
+}
+
+.tile{
+    background:var(--bg-card);
+    border-radius:14px;
+    padding:15px;
+}
+
+.tile-title{
+    color:var(--text-muted);
+    font-size:.9rem;
+}
+
+.tile-value{
+    margin-top:8px;
+    font-weight:bold;
+    font-size:1.1rem;
+}
+
+.status{
+    text-align:center;
+    color:var(--text-muted);
+    margin-top:15px;
+}
+
+@media(max-width:500px){
+    .temp{
+        font-size:56px;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="header">
+        <div class="logo">🌤 Mausam Heram</div>
+        <div class="clock" id="clock"></div>
+    </div>
+
+    <div class="search-box">
+        <input id="cityInput" placeholder="Enter city name…">
+        <button id="searchBtn">Search</button>
+    </div>
+
+    <div class="card">
+        <img id="icon" class="weather-icon" src="" alt="">
+        <div class="temp" id="temp">--°C</div>
+        <div class="city" id="city">City, Country</div>
+        <div class="condition" id="condition">—</div>
+    </div>
+
+    <div class="grid">
+        <div class="tile">
+            <div class="tile-title">💧 Humidity</div>
+            <div class="tile-value" id="humidity">—</div>
+        </div>
+
+        <div class="tile">
+            <div class="tile-title">💨 Wind Speed</div>
+            <div class="tile-value" id="wind">—</div>
+        </div>
+
+        <div class="tile">
+            <div class="tile-title">🌡 Feels Like</div>
+            <div class="tile-value" id="feels">—</div>
+        </div>
+
+        <div class="tile">
+            <div class="tile-title">👁 Visibility</div>
+            <div class="tile-value" id="visibility">—</div>
+        </div>
+    </div>
+
+    <div class="status" id="status">
+        Type a city name and press Search.
+    </div>
+
+</div>
+
+<script>
+const API_KEY = "e6298966eaf88fa69960de882b0c8fa0";
+
+const cityInput = document.getElementById("cityInput");
+const searchBtn = document.getElementById("searchBtn");
+
+function updateClock(){
+    const now = new Date();
+
+    const options = {
+        weekday:'long',
+        day:'2-digit',
+        month:'long',
+        year:'numeric'
+    };
+
+    const date = now.toLocaleDateString(undefined, options);
+    const time = now.toLocaleTimeString();
+
+    document.getElementById("clock").textContent =
+        `${date} • ${time}`;
+}
+
+setInterval(updateClock,1000);
+updateClock();
+
+async function fetchWeather(){
+
+    const city = cityInput.value.trim();
+
+    if(!city){
+        setStatus("Please enter a city name.", true);
+        return;
+    }
+
+    searchBtn.disabled = true;
+    searchBtn.textContent = "...";
+
+    setStatus("Fetching weather data...", false);
+
+    try{
+
+        const url =
+            `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`;
+
+        const response = await fetch(url);
+
+        if(response.status === 404){
+            throw new Error(`City "${city}" not found.`);
+        }
+
+        if(response.status === 401){
+            throw new Error("Invalid API key.");
+        }
+
+        const data = await response.json();
+
+        const temp = Math.round(data.main.temp);
+        const feels = Math.round(data.main.feels_like);
+        const humidity = data.main.humidity;
+        const wind = (data.wind.speed * 3.6).toFixed(1);
+        const visibility = data.visibility
+            ? (data.visibility/1000).toFixed(1)+" km"
+            : "N/A";
+
+        const iconCode = data.weather[0].icon;
+        const iconUrl =
+            `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+
+        document.getElementById("temp").textContent =
+            `${temp}°C`;
+
+        document.getElementById("city").textContent =
+            `${data.name}, ${data.sys.country}`;
+
+        document.getElementById("condition").textContent =
+            data.weather[0].description
+            .replace(/\b\w/g,l=>l.toUpperCase());
+
+        document.getElementById("humidity").textContent =
+            humidity + "%";
+
+        document.getElementById("wind").textContent =
+            wind + " km/h";
+
+        document.getElementById("feels").textContent =
+            feels + "°C";
+
+        document.getElementById("visibility").textContent =
+            visibility;
+
+        document.getElementById("icon").src = iconUrl;
+
+        const updated =
+            new Date().toLocaleTimeString([],{
+                hour:'2-digit',
+                minute:'2-digit'
+            });
+
+        setStatus(
+            `Last updated at ${updated}.`,
+            false
+        );
+
+    }catch(error){
+        setStatus(error.message,true);
+    }
+
+    searchBtn.disabled = false;
+    searchBtn.textContent = "Search";
+}
+
+function setStatus(message,error=false){
+    const status = document.getElementById("status");
+    status.textContent = message;
+    status.style.color =
+        error ? "#FF6B6B" : "#7A9BB5";
+}
+
+searchBtn.addEventListener("click",fetchWeather);
+
+cityInput.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){
+        fetchWeather();
+    }
+});
+</script>
+
+</body>
+</html>
+```
